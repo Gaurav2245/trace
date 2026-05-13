@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg:       #07070b;
+  --surface:  #111118;
+  --surface2: #18181f;
+  --border:   #232330;
+  --accent:   #f97316;
+  --accent2:  #6366f1;
+  --accent3:  #22c55e;
+  --text:     #f0f0f6;
+  --muted:    #74748a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  overflow-x: hidden;
+}
+
+.font-display { font-family: 'DM Serif Display', serif; }
+.font-mono    { font-family: 'JetBrains Mono', monospace; }
+
+::-webkit-scrollbar       { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Keyframes */
+@keyframes fadeUp  { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+@keyframes blink   { 0%,100% { opacity:1; } 50% { opacity:0; } }
+@keyframes slideIn { from { transform:translateX(110%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+@keyframes spin    { to { transform:rotate(360deg); } }
+
+.animate-fadeUp  { animation: fadeUp  0.5s ease forwards; }
+.animate-blink   { animation: blink   1s step-end infinite; }
+.animate-slideIn { animation: slideIn 0.35s ease forwards; }
+.animate-spin    { animation: spin    1s linear infinite; }
+
+/* Utilities */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(99,102,241,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99,102,241,0.05) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+.glass      { background:rgba(255,255,255,0.03); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.06); }
+.glow-ind   { box-shadow:0 0 40px rgba(99,102,241,0.12); }
+.text-glow  { text-shadow:0 0 40px rgba(249,115,22,0.4); }

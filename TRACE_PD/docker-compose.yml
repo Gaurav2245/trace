@@ -1,0 +1,99 @@
+# ──────────────────────────────────────────────────────────
+#  TRACE_PD  —  Personal Behavior Debugger
+#  All resources prefixed  trcpd_  to avoid any conflicts
+# ──────────────────────────────────────────────────────────
+name: trcpd
+
+services:
+
+  # ── PostgreSQL 16 + pgvector ──────────────────────────
+  trcpd-db:
+    image: pgvector/pgvector:pg16
+    container_name: trcpd_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${TRCPD_DB_USER:-trcpd_user}
+      POSTGRES_PASSWORD: ${TRCPD_DB_PASS:-trcpd_pass_2024}
+      POSTGRES_DB:       ${TRCPD_DB_NAME:-trcpd_db}
+    volumes:
+      - trcpd_pgdata:/var/lib/postgresql/data
+      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "15432:5432"          # non-standard host port avoids conflicts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TRCPD_DB_USER:-trcpd_user} -d ${TRCPD_DB_NAME:-trcpd_db}"]
+      interval: 8s
+      timeout: 5s
+      retries: 10
+    networks:
+      - trcpd_net
+
+  # ── FastAPI Backend ───────────────────────────────────
+  trcpd-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: trcpd_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL:  postgresql+asyncpg://${TRCPD_DB_USER:-trcpd_user}:${TRCPD_DB_PASS:-trcpd_pass_2024}@trcpd-db:5432/${TRCPD_DB_NAME:-trcpd_db}
+      SECRET_KEY:    ${TRCPD_SECRET:-trcpd_jwt_secret_change_me_2024}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY:-}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-}
+      AZURE_OPENAI_API_VERSION: ${AZURE_OPENAI_API_VERSION:-2024-10-21}
+      AZURE_OPENAI_DEPLOYMENT: ${AZURE_OPENAI_DEPLOYMENT:-}
+      AZURE_DEPLOYMENT_GPT4O: ${AZURE_DEPLOYMENT_GPT4O:-}
+      ENVIRONMENT:   ${ENVIRONMENT:-development}
+      CORS_ORIGINS:  "http://localhost:18000,http://localhost:13000,http://localhost:10080,http://trcpd-frontend:80"
+    ports:
+      - "18000:8000"          # host 18000  →  container 8000
+    depends_on:
+      trcpd-db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app        # hot-reload in dev
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - trcpd_net
+
+  # ── React Frontend ────────────────────────────────────
+  trcpd-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:18000
+        VITE_WS_URL:  ws://localhost:18000
+    container_name: trcpd_frontend
+    restart: unless-stopped
+    ports:
+      - "13000:80"            # host 13000  →  container 80
+    depends_on:
+      - trcpd-backend
+    networks:
+      - trcpd_net
+
+  # ── Nginx Reverse Proxy ───────────────────────────────
+  trcpd-nginx:
+    image: nginx:alpine
+    container_name: trcpd_nginx
+    restart: unless-stopped
+    ports:
+      - "10080:80"            # host 10080  →  container 80
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - trcpd-backend
+      - trcpd-frontend
+    networks:
+      - trcpd_net
+
+# ── Named Volume & Network ────────────────────────────
+volumes:
+  trcpd_pgdata:
+    name: trcpd_pgdata
+
+networks:
+  trcpd_net:
+    name: trcpd_net
+    driver: bridge
