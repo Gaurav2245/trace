@@ -1,6 +1,6 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, List, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 
@@ -11,10 +11,6 @@ class UserRegister(BaseModel):
     password: str = Field(min_length=6)
     timezone: str = "UTC"
     consent: bool = True
-
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -40,6 +36,15 @@ class LogCreate(BaseModel):
     notes: Optional[str] = None
     timestamp: Optional[datetime] = None
     details: dict = Field(default_factory=dict)
+
+    @field_validator("timestamp")
+    @classmethod
+    def _assume_utc_if_naive(cls, v: Optional[datetime]) -> Optional[datetime]:
+        # Log.timestamp is a TIMESTAMPTZ column; a naive value from a client
+        # that omitted a UTC offset would otherwise fail on insert.
+        if v is not None and v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v
 
     # Core temporal context
     start_time: Optional[datetime] = None

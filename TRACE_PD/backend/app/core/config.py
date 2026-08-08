@@ -1,5 +1,8 @@
 from pydantic_settings import BaseSettings
+from pydantic import model_validator
 from functools import lru_cache
+
+_DEFAULT_SECRET_KEY = "trcpd_jwt_secret_change_me_in_prod_2024"
 
 
 class Settings(BaseSettings):
@@ -10,7 +13,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = (
         "postgresql+asyncpg://trcpd_user:trcpd_pass_2024@localhost:15432/trcpd_db"
     )
-    SECRET_KEY: str = "trcpd_jwt_secret_change_me_in_prod_2024"
+    SECRET_KEY: str = _DEFAULT_SECRET_KEY
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
 
@@ -38,6 +41,15 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         extra = "ignore"
+
+    @model_validator(mode="after")
+    def _forbid_default_secret_in_production(self) -> "Settings":
+        if self.ENVIRONMENT == "production" and self.SECRET_KEY == _DEFAULT_SECRET_KEY:
+            raise ValueError(
+                "TRCPD_SECRET is still set to the default value. "
+                "Set a unique SECRET_KEY before running with ENVIRONMENT=production."
+            )
+        return self
 
 
 @lru_cache()

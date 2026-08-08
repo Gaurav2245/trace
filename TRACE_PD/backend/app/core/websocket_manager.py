@@ -23,7 +23,7 @@ class WSManager:
             try:
                 await ws.send_json(payload)
             except Exception:
-                self.active[uid].remove(ws)
+                self.disconnect(ws, uid)
 
 
 ws_manager = WSManager()

@@ -2,7 +2,6 @@
 ML Engine for TRACE_PD
 - Focus score computation (weighted formula)
 - IsolationForest anomaly / loop detection
-- DoWhy-inspired causal estimation
 - Chart data builders (timeline, activity distribution, mood trend)
 """
 import numpy as np
@@ -66,42 +65,33 @@ def detect_anomalous_loops(logs: List[Dict]) -> List[Dict]:
         return []
 
 
-def causal_estimate_phone_focus(logs: List[Dict]) -> Dict[str, Any]:
-    """Simplified back-door DoWhy estimate: phone → focus."""
-    if len(logs) < 8:
-        return {"effect": None, "p_value": None, "confidence": 0.0}
-    try:
-        df = pd.DataFrame(logs)
-        phone_dur = df[df["activity_type"] == "phone"]["duration"].values
-        focus_all = df["focus_score"].fillna(df["focus_score"].mean()).values
-        n = min(len(phone_dur), len(focus_all))
-        if n < 3:
-            return {"effect": None, "p_value": None, "confidence": 0.0}
-        corr = float(np.corrcoef(phone_dur[:n], focus_all[:n])[0, 1])
-        return {
-            "effect":     round(-abs(corr) * 0.73, 3),
-            "p_value":    round(max(0.001, 0.1 - abs(corr) * 0.1), 3),
-            "confidence": round(min(0.95, abs(corr) + 0.2), 2),
-            "method":     "DoWhy back-door adjustment",
-        }
-    except Exception as exc:
-        logger.warning(f"CausalEstimate: {exc}")
-        return {"effect": None, "p_value": None, "confidence": 0.0}
+def _format_hour_label(hour: int) -> str:
+    period = "AM" if hour < 12 else "PM"
+    display = hour % 12 or 12
+    return f"{display}{period}"
 
 
 def build_focus_timeline(logs: List[Dict]) -> List[Dict]:
-    hours = ["8AM","9AM","10AM","11AM","12PM","1PM","2PM","3PM","4PM","5PM","6PM"]
-    base  = [76, 85, 92, 80, 62, 55, 48, 38, 65, 85, 76]
-    if logs:
-        try:
-            df  = pd.DataFrame(logs)
-            avg = df["focus_score"].dropna().mean()
-            if not np.isnan(avg):
-                adj  = (avg - 72) / 10
-                base = [round(max(0, min(100, v + adj * 5)), 1) for v in base]
-        except Exception:
-            pass
-    return [{"time": h, "value": v} for h, v in zip(hours, base)]
+    """Average focus_score per hour-of-day, from real logs only.
+    Returns [] when there isn't enough data to plot — callers should render
+    an empty state rather than a chart with no basis in the user's data."""
+    if not logs:
+        return []
+    try:
+        df = pd.DataFrame(logs)
+        df = df.dropna(subset=["focus_score"])
+        if df.empty:
+            return []
+        df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce", format="mixed", utc=True)
+        df = df.dropna(subset=["timestamp"])
+        if df.empty:
+            return []
+        df["hour"] = df["timestamp"].dt.hour
+        grouped = df.groupby("hour")["focus_score"].mean().round(1).sort_index()
+        return [{"time": _format_hour_label(int(h)), "value": float(v)} for h, v in grouped.items()]
+    except Exception as exc:
+        logger.warning(f"FocusTimeline: {exc}")
+        return []
 
 
 def build_activity_distribution(logs: List[Dict]) -> List[Dict]:

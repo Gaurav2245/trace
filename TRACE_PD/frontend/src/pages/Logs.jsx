@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Search, Brain, Moon, Smartphone, Coffee, Dumbbell, BookOpen, X, Check, RefreshCw } from 'lucide-react'
-import { logsApi } from '../services/api.js'
+import { logsApi, apiErrorMessage } from '../services/api.js'
+import { useToast } from '../store/ToastContext.jsx'
 
 const ACTIVITY_TYPES = [
   { id: 'deep_work', label: 'Deep Work', icon: Brain, color: '#6366f1' },
@@ -25,20 +26,46 @@ function formatTime(ts) {
 
 function getType(id) { return ACTIVITY_TYPES.find(t => t.id === id) || { id, label: id, icon: Brain, color: '#6366f1' } }
 
+const PAGE_SIZE = 50
+
 export default function Logs() {
   const [logs, setLogs] = useState([])
+  const [serverOffset, setServerOffset] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState('all')
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ activity_type: 'deep_work', duration: '', mood: 7, focus_score: '', notes: '' })
   const [error, setError] = useState('')
+  const toast = useToast()
 
   const load = async () => {
     setLoading(true)
-    try { const res = await logsApi.list(100); setLogs(res.data) } catch {}
+    try {
+      const res = await logsApi.list(PAGE_SIZE, 0)
+      setLogs(res.data)
+      setServerOffset(res.data.length)
+      setHasMore(res.data.length === PAGE_SIZE)
+    } catch {
+      toast.error('Could not load logs. Please try again.')
+    }
     setLoading(false)
+  }
+
+  const loadMore = async () => {
+    setLoadingMore(true)
+    try {
+      const res = await logsApi.list(PAGE_SIZE, serverOffset)
+      setLogs(prev => [...prev, ...res.data])
+      setServerOffset(prev => prev + res.data.length)
+      setHasMore(res.data.length === PAGE_SIZE)
+    } catch {
+      toast.error('Could not load more logs. Please try again.')
+    }
+    setLoadingMore(false)
   }
 
   useEffect(() => { load() }, [])
@@ -57,7 +84,8 @@ export default function Logs() {
       setLogs(prev => [res.data, ...prev])
       setForm({ activity_type: 'deep_work', duration: '', mood: 7, focus_score: '', notes: '' })
       setShowForm(false)
-    } catch (e) { setError(e.response?.data?.detail || 'Failed to save') }
+      toast.success('Activity logged.')
+    } catch (e) { setError(apiErrorMessage(e, 'Failed to save')) }
     setSaving(false)
   }
 
@@ -179,6 +207,16 @@ export default function Logs() {
           </div>
         )}
 
+        {!loading && hasMore && (
+          <div className="flex justify-center mt-5">
+            <button onClick={loadMore} disabled={loadingMore}
+              className="px-5 py-2.5 rounded-xl text-sm transition-all hover:opacity-80 disabled:opacity-50"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--muted)' }}>
+              {loadingMore ? 'Loading…' : 'Load More'}
+            </button>
+          </div>
+        )}
+
         {showForm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.75)' }}>
             <div className="w-full max-w-md p-6 rounded-2xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -202,14 +240,14 @@ export default function Logs() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs mb-1.5 block" style={{ color: 'var(--muted)' }}>Duration (mins)*</label>
-                    <input type="number" value={form.duration} onChange={e => setForm(f => ({ ...f, duration: e.target.value }))} placeholder="45"
+                    <label htmlFor="duration" className="text-xs mb-1.5 block" style={{ color: 'var(--muted)' }}>Duration (mins)*</label>
+                    <input id="duration" type="number" min="1" max="1440" value={form.duration} onChange={e => setForm(f => ({ ...f, duration: e.target.value }))} placeholder="45"
                       className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
                       style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'JetBrains Mono' }} />
                   </div>
                   <div>
-                    <label className="text-xs mb-1.5 block" style={{ color: 'var(--muted)' }}>Focus Score (0-100)</label>
-                    <input type="number" value={form.focus_score} onChange={e => setForm(f => ({ ...f, focus_score: e.target.value }))} placeholder="optional"
+                    <label htmlFor="focus_score" className="text-xs mb-1.5 block" style={{ color: 'var(--muted)' }}>Focus Score (0-100)</label>
+                    <input id="focus_score" type="number" min="0" max="100" value={form.focus_score} onChange={e => setForm(f => ({ ...f, focus_score: e.target.value }))} placeholder="optional"
                       className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
                       style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'JetBrains Mono' }} />
                   </div>

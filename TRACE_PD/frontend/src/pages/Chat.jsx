@@ -12,7 +12,7 @@ const SUGGESTIONS = [
 
 const WELCOME = {
   role: 'assistant',
-  content: `**Trace Behavior Debugger** — LangGraph Multi-Agent Pipeline\n\nI have access to your full behavior trace: activity logs, focus scores, sleep data, and detected loops stored in PostgreSQL.\n\nI run 4 agents on every query:\n- **Parser** → intent classification\n- **Retriever** → context from your logs\n- **Causal** → DoWhy + EconML inference\n- **Fixer** → actionable fix strategies\n\nAsk me anything about your patterns.`,
+  content: `**Trace Behavior Debugger** — LangGraph Multi-Agent Pipeline\n\nI have access to your full behavior trace: activity logs, focus scores, sleep data, and detected loops stored in PostgreSQL.\n\nI run 4 agents on every query:\n- **Parser** → intent classification\n- **Retriever** → context from your logs\n- **Causal** → statistical causal analysis\n- **Fixer** → actionable fix strategies\n\nAsk me anything about your patterns.`,
   time: 'now',
   agent_trace: [],
   tokens_used: 0,
@@ -21,9 +21,31 @@ const WELCOME = {
 const AGENT_STEPS = [
   '[Parser] Classifying query intent…',
   '[Retriever] Fetching behavior logs from PostgreSQL…',
-  '[Causal] Running DoWhy + EconML inference…',
+  '[Causal] Running statistical causal analysis…',
   '[Fixer] Generating fix strategies…',
 ]
+
+// Renders **bold** and "- bullet" lines as real React elements (no HTML
+// injection) so message content — including a user's own stored chat
+// history — can never execute as markup.
+function RichText({ text }) {
+  return String(text ?? '').split('\n').map((line, i) => {
+    const isBullet = line.startsWith('- ')
+    const body = isBullet ? line.slice(2) : line
+    const parts = body.split(/(\*\*.*?\*\*)/g).filter(Boolean)
+    return (
+      <div key={i}>
+        {isBullet && '• '}
+        {parts.map((part, j) => (
+          part.startsWith('**') && part.endsWith('**')
+            ? <strong key={j}>{part.slice(2, -2)}</strong>
+            : <span key={j}>{part}</span>
+        ))}
+        {line === '' && ' '}
+      </div>
+    )
+  })
+}
 
 function MessageBubble({ msg, expanded, onToggleTrace }) {
   const isUser = msg.role === 'user'
@@ -43,14 +65,9 @@ function MessageBubble({ msg, expanded, onToggleTrace }) {
             border: isUser ? 'none' : '1px solid var(--border)',
             borderTopLeftRadius: !isUser ? 4 : undefined,
             borderTopRightRadius: isUser ? 4 : undefined,
-            whiteSpace: 'pre-wrap',
-          }}
-          dangerouslySetInnerHTML={{
-            __html: msg.content
-              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-              .replace(/^- (.*)/gm, '&bull; $1')
-          }}
-        />
+          }}>
+          <RichText text={msg.content} />
+        </div>
         {msg.agent_trace?.length > 0 && (
           <div className="mt-2">
             <button onClick={onToggleTrace}
@@ -183,7 +200,7 @@ export default function Chat() {
           </div>
           <div>
             <h2 className="font-medium text-sm">Behavior Debugger</h2>
-            <p className="font-mono text-xs" style={{ color: 'var(--muted)' }}>FastAPI → LangGraph → DoWhy → EconML → PostgreSQL</p>
+            <p className="font-mono text-xs" style={{ color: 'var(--muted)' }}>FastAPI → LangGraph → Causal Analysis → PostgreSQL</p>
           </div>
         </div>
         <div className="flex items-center gap-3">

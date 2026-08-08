@@ -106,7 +106,7 @@ VALUES (
     'a0000000-0000-0000-0000-000000000001',
     'demo@trace.dev',
     'demo',
-    '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW',
+    '$2b$12$HDWjrdjmpZGhLUUqgXqf9OcNC/MERTOrAVmqrbAty9v/ZiPNTvL/S',
     'UTC',
     TRUE
 ) ON CONFLICT DO NOTHING;
@@ -135,15 +135,15 @@ VALUES
 ('a0000000-0000-0000-0000-000000000001',
  'Energy dip detected', '3:00 PM', 'Phone usage (30+ mins)', 'Low focus score (<50)',
  0.87, 12, 'active',
- 'DoWhy back-door adjustment: phone usage mediates 73% of focus drop (p=0.002). IsolationForest flagged 12 anomalous sessions.'),
+ 'Correlation-based estimate: phone usage tracks with 73% of observed focus drop. IsolationForest flagged 12 anomalous sessions.'),
 ('a0000000-0000-0000-0000-000000000001',
  'Heavy meal + no movement', 'Post-lunch', 'Unplanned YouTube (45+ mins)', 'Missed deep work block',
  0.71, 8, 'active',
- 'IsolationForest anomaly on 8 days. CATE estimate: removing phone post-lunch recovers 1.4 hrs productive time (EconML, 74% CI).'),
+ 'IsolationForest anomaly on 8 days. Heuristic estimate: removing phone post-lunch could recover ~1.4 hrs of productive time.'),
 ('a0000000-0000-0000-0000-000000000001',
  'Screen exposure after 10 PM', '11:00 PM', 'Late-night scrolling (1+ hr)', 'Poor sleep quality',
  0.94, 21, 'resolved',
- 'DoWhy IV: screen exposure explains 81% of sleep variance (p<0.001). Resolved via app-blocker fix.')
+ 'Correlation-based estimate: screen exposure tracks with 81% of observed sleep variance. Resolved via app-blocker fix.')
 ON CONFLICT DO NOTHING;
 
 -- Fixes for loop 1

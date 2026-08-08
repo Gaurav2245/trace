@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../store/AuthContext.jsx'
+import { apiErrorMessage } from '../services/api.js'
 import { Zap, Eye, EyeOff, ArrowRight } from 'lucide-react'
 
 export default function Login() {
   const [mode, setMode]       = useState('login')
-  const [form, setForm]       = useState({ email: '', password: '', username: '', timezone: 'UTC', consent: true })
+  const [form, setForm]       = useState({ email: '', password: '', username: '', timezone: 'UTC', consent: false })
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
   const [showPw, setShowPw]   = useState(false)
@@ -21,7 +22,7 @@ export default function Login() {
       else await register(form)
       nav('/dashboard')
     } catch (e) {
-      setError(e.response?.data?.detail || 'Something went wrong')
+      setError(apiErrorMessage(e))
     } finally { setLoading(false) }
   }
 
@@ -58,33 +59,46 @@ export default function Login() {
           <div className="space-y-4">
             {mode === 'register' && (
               <div>
-                <label className="text-xs mb-1.5 block" style={{ color: 'var(--muted)' }}>Username</label>
-                <input value={form.username} onChange={e => set('username', e.target.value)}
+                <label htmlFor="username" className="text-xs mb-1.5 block" style={{ color: 'var(--muted)' }}>Username</label>
+                <input id="username" name="username" autoComplete="username"
+                  value={form.username} onChange={e => set('username', e.target.value)}
                   placeholder="your_name" className="w-full px-4 py-3 rounded-xl text-sm outline-none"
                   style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'DM Sans' }} />
               </div>
             )}
             <div>
-              <label className="text-xs mb-1.5 block" style={{ color: 'var(--muted)' }}>Email</label>
-              <input value={form.email} onChange={e => set('email', e.target.value)}
+              <label htmlFor="email" className="text-xs mb-1.5 block" style={{ color: 'var(--muted)' }}>Email</label>
+              <input id="email" name="email" autoComplete="email"
+                value={form.email} onChange={e => set('email', e.target.value)}
                 type="email" placeholder="you@example.com"
+                onKeyDown={e => e.key === 'Enter' && submit()}
                 className="w-full px-4 py-3 rounded-xl text-sm outline-none"
                 style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'DM Sans' }} />
             </div>
             <div>
-              <label className="text-xs mb-1.5 block" style={{ color: 'var(--muted)' }}>Password</label>
+              <label htmlFor="password" className="text-xs mb-1.5 block" style={{ color: 'var(--muted)' }}>Password</label>
               <div className="relative">
-                <input value={form.password} onChange={e => set('password', e.target.value)}
+                <input id="password" name="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  value={form.password} onChange={e => set('password', e.target.value)}
                   type={showPw ? 'text' : 'password'} placeholder="••••••••"
                   onKeyDown={e => e.key === 'Enter' && submit()}
                   className="w-full px-4 py-3 pr-10 rounded-xl text-sm outline-none"
                   style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'DM Sans' }} />
-                <button onClick={() => setShowPw(s => !s)}
+                <button type="button" onClick={() => setShowPw(s => !s)}
+                  aria-label={showPw ? 'Hide password' : 'Show password'}
                   className="absolute right-3 top-3.5 opacity-50 hover:opacity-100">
                   {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
             </div>
+
+            {mode === 'register' && (
+              <label className="flex items-start gap-2.5 text-xs cursor-pointer select-none" style={{ color: 'var(--muted)' }}>
+                <input type="checkbox" checked={form.consent} onChange={e => set('consent', e.target.checked)}
+                  className="mt-0.5 accent-indigo-500" />
+                <span>I consent to Trace storing my activity logs and behavior data to generate insights.</span>
+              </label>
+            )}
 
             {error && (
               <div className="px-4 py-2 rounded-lg text-sm"
@@ -93,7 +107,7 @@ export default function Login() {
               </div>
             )}
 
-            <button onClick={submit} disabled={loading}
+            <button onClick={submit} disabled={loading || (mode === 'register' && !form.consent)}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all hover:opacity-90 disabled:opacity-50"
               style={{ background: 'var(--accent)', color: '#fff' }}>
               {loading ? 'Please wait…' : mode === 'login' ? 'Sign In' : 'Create Account'}

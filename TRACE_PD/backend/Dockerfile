@@ -17,6 +17,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN groupadd --system trcpd && useradd --system --gid trcpd --no-create-home trcpd \
+    && chown -R trcpd:trcpd /app
+USER trcpd
+
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=5 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+CMD ["gunicorn", "app.main:app", "-k", "uvicorn.workers.UvicornWorker", \
+     "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "60"]

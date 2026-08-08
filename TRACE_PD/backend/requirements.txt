@@ -1,18 +1,22 @@
 # Web framework
 fastapi==0.111.0
 uvicorn[standard]==0.29.0
+gunicorn==22.0.0
 python-multipart==0.0.9
 
 # Database (async)
 asyncpg==0.29.0
 sqlalchemy[asyncio]==2.0.30
-psycopg2-binary==2.9.9
 pgvector==0.2.5
+alembic==1.13.2
 
 # Auth
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 bcrypt==3.2.2
+
+# Rate limiting
+slowapi==0.1.10
 
 # Validation / Settings
 pydantic==2.7.1

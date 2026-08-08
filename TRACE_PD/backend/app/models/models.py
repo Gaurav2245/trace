@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import (
     Column, String, Boolean, Integer, Float,
     Text, DateTime, ForeignKey, BigInteger, JSON
@@ -7,6 +7,10 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.session import Base
+
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class User(Base):
@@ -17,8 +21,8 @@ class User(Base):
     hashed_pw  = Column(String, nullable=False)
     timezone   = Column(String, default="UTC")
     consent    = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     logs          = relationship("Log",         back_populates="user", cascade="all, delete")
     loops         = relationship("Loop",        back_populates="user", cascade="all, delete")
@@ -31,14 +35,14 @@ class Log(Base):
     __tablename__ = "logs"
     id            = Column(BigInteger, primary_key=True, autoincrement=True)
     user_id       = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
-    timestamp     = Column(DateTime, nullable=False, default=datetime.utcnow)
+    timestamp     = Column(DateTime(timezone=True), nullable=False, default=utcnow)
     activity_type = Column(String, nullable=False)
     duration      = Column(Integer, nullable=False)
     mood          = Column(Integer)
     focus_score   = Column(Integer)
     notes         = Column(Text)
     details       = Column(JSON, default=dict)
-    created_at    = Column(DateTime, default=datetime.utcnow)
+    created_at    = Column(DateTime(timezone=True), default=utcnow)
     user          = relationship("User", back_populates="logs")
 
 
@@ -54,8 +58,8 @@ class Loop(Base):
     occurrences     = Column(Integer, default=1)
     status          = Column(String, default="active")
     causal_estimate = Column(Text)
-    detected_at     = Column(DateTime, default=datetime.utcnow)
-    updated_at      = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    detected_at     = Column(DateTime(timezone=True), default=utcnow)
+    updated_at      = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
     user  = relationship("User", back_populates="loops")
     fixes = relationship("Fix",  back_populates="loop", cascade="all, delete")
 
@@ -69,7 +73,7 @@ class Fix(Base):
     effort     = Column(String, default="Medium")
     impact     = Column(String, default="Medium")
     applied    = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
     user = relationship("User", back_populates="fixes")
     loop = relationship("Loop", back_populates="fixes")
 
@@ -83,7 +87,7 @@ class Breakpoint(Base):
     threshold      = Column(Float, nullable=False)
     action_msg     = Column(Text)
     active         = Column(Boolean, default=True)
-    created_at     = Column(DateTime, default=datetime.utcnow)
+    created_at     = Column(DateTime(timezone=True), default=utcnow)
     user = relationship("User", back_populates="breakpoints")
 
 
@@ -95,5 +99,5 @@ class ChatMessage(Base):
     content     = Column(Text, nullable=False)
     tokens_used = Column(Integer, default=0)
     model_used  = Column(String)
-    created_at  = Column(DateTime, default=datetime.utcnow)
+    created_at  = Column(DateTime(timezone=True), default=utcnow)
     user = relationship("User", back_populates="chat_messages")

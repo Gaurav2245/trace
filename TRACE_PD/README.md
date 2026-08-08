@@ -67,7 +67,7 @@ TRACE_PD/
 │       │   └── websocket_manager.py
 │       ├── api/routes.py       ← All 14 endpoints + WebSocket
 │       ├── agents/pipeline.py  ← LangGraph 4-agent StateGraph
-│       ├── ml/engine.py        ← IsolationForest + DoWhy + EconML
+│       ├── ml/engine.py        ← IsolationForest anomaly detection + causal heuristics
 │       ├── models/models.py    ← SQLAlchemy ORM
 │       ├── schemas/schemas.py  ← Pydantic v2 schemas
 │       └── db/session.py       ← Async SQLAlchemy
@@ -100,7 +100,7 @@ TRACE_PD/
 POST /debug
   → [Parser]    intent classification
   → [Retriever] loads your logs + loops from PostgreSQL
-  → [Causal]    DoWhy back-door adjustment + EconML CATE
+  → [Causal]    statistical causal heuristics + confidence calibration
   → [Fixer]     ranked fix strategies
   ← returns cause, suggestion, confidence, agent_trace[]
 ```
@@ -138,6 +138,47 @@ uvicorn app.main:app --reload --port 18000
 cd frontend
 npm install
 npm run dev     # → http://localhost:5173
+```
+
+---
+
+## 🗃️ Database Migrations (Alembic)
+
+`db/init.sql` remains the bootstrap script for fresh Docker Compose environments — it creates the schema, the `pgvector` extension, the `vectors` table (not modeled in SQLAlchemy), and demo seed data.
+
+`alembic/` is the source of truth for schema changes going forward:
+
+```bash
+cd backend
+
+# Fresh DB created via docker-compose (init.sql already ran) — mark it as
+# up to date with the baseline migration, no DDL executed:
+alembic stamp head
+
+# DB with no init.sql bootstrap — create the schema directly from migrations:
+alembic upgrade head
+
+# After changing a model in app/models/models.py:
+alembic revision --autogenerate -m "describe the change"
+alembic upgrade head
+```
+
+---
+
+## 🚀 Production Deployment
+
+`docker-compose.prod.yml` is a hardened variant of the dev compose file:
+- backend runs via `gunicorn` + Uvicorn workers (no `--reload`, no source bind-mount — the image is immutable)
+- Postgres is not published to the host
+- `TRCPD_SECRET`, `TRCPD_DB_PASS`, `TRCPD_CORS_ORIGINS`, `TRCPD_PUBLIC_API_URL`, `TRCPD_PUBLIC_WS_URL` are required — the stack refuses to start with insecure defaults
+- containers run as a non-root user and carry Docker healthchecks
+
+```bash
+TRCPD_DB_PASS=... TRCPD_SECRET=... \
+TRCPD_CORS_ORIGINS=https://your-domain.com \
+TRCPD_PUBLIC_API_URL=https://api.your-domain.com \
+TRCPD_PUBLIC_WS_URL=wss://api.your-domain.com \
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 ---

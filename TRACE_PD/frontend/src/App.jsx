@@ -1,13 +1,15 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './store/AuthContext.jsx'
 import Navbar      from './components/Navbar.jsx'
 import AlertBanner from './components/AlertBanner.jsx'
 import Landing     from './pages/Landing.jsx'
 import Login       from './pages/Login.jsx'
-import Dashboard   from './pages/Dashboard.jsx'
-import Loops       from './pages/Loops.jsx'
-import Chat        from './pages/Chat.jsx'
-import Logs        from './pages/Logs.jsx'
+
+const Dashboard = lazy(() => import('./pages/Dashboard.jsx'))
+const Loops     = lazy(() => import('./pages/Loops.jsx'))
+const Chat      = lazy(() => import('./pages/Chat.jsx'))
+const Logs      = lazy(() => import('./pages/Logs.jsx'))
 
 function Guard({ children }) {
   const { user } = useAuth()
@@ -19,7 +21,9 @@ function Shell({ children }) {
     <>
       <Navbar />
       <AlertBanner />
-      <div className="pt-14">{children}</div>
+      <div className="pt-14">
+        <Suspense fallback={null}>{children}</Suspense>
+      </div>
     </>
   )
 }

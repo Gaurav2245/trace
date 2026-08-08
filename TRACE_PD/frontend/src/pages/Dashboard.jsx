@@ -144,14 +144,19 @@ export default function Dashboard() {
             <h2 className="font-medium">Focus Timeline</h2>
             <span className="font-mono text-xs px-2 py-1 rounded"
               style={{ background: 'rgba(99,102,241,0.1)', color: 'var(--accent2)' }}>
-              ML-computed · last 30 logs
+              Avg focus by hour of day
             </span>
           </div>
           {loading ? (
             <div className="h-48 rounded-xl animate-pulse" style={{ background: 'var(--surface2)' }} />
+          ) : !data?.focus_timeline?.length ? (
+            <div className="h-48 flex flex-col items-center justify-center text-center" style={{ color: 'var(--muted)' }}>
+              <p className="text-sm">No focus data yet.</p>
+              <p className="text-xs mt-1">Log a few activities with a focus score to see your timeline.</p>
+            </div>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={data?.focus_timeline || []}>
+              <LineChart data={data.focus_timeline}>
                 <defs>
                   <linearGradient id="focusGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />

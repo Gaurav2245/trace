@@ -50,7 +50,7 @@ export const authApi = {
 export const dashboardApi = { get: () => api.get('/dashboard') }
 
 export const logsApi = {
-  list:   (limit = 50) => api.get(`/logs?limit=${limit}`),
+  list:   (limit = 50, offset = 0) => api.get(`/logs?limit=${limit}&offset=${offset}`),
   create: d => api.post('/logs', d),
 }
 
@@ -73,9 +73,26 @@ export const breakpointsApi = {
   create: d  => api.post('/breakpoints', d),
 }
 
+// FastAPI validation errors return `detail` as an array of
+// {loc, msg, type} objects rather than a string — rendering that directly
+// as a React child throws. Always route API errors through this first.
+export function apiErrorMessage(err, fallback = 'Something went wrong') {
+  const detail = err?.response?.data?.detail
+  if (!detail) return fallback
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) {
+    return detail.map(d => d.msg || JSON.stringify(d)).join('; ') || fallback
+  }
+  return fallback
+}
+
 export function openWebSocket(userId, onMessage) {
-  const ws = new WebSocket(`${WS}/ws/${userId}`)
-  ws.onmessage = e => { try { onMessage(JSON.parse(e.data)) } catch {} }
+  const token = localStorage.getItem('trcpd_token')
+  const ws = new WebSocket(`${WS}/ws/${userId}?token=${encodeURIComponent(token || '')}`)
+  ws.onmessage = e => {
+    try { onMessage(JSON.parse(e.data)) }
+    catch (err) { console.warn('[TRACE_PD WS] failed to handle message', err) }
+  }
   ws.onerror   = e => console.warn('[TRACE_PD WS]', e)
   const ping   = setInterval(() => {
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }))

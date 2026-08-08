@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { GitBranch, ChevronRight, Zap, Check, RefreshCw, TrendingDown } from 'lucide-react'
 import { loopsApi, fixesApi } from '../services/api.js'
+import { useToast } from '../store/ToastContext.jsx'
 
 const STATUS_STYLE = {
   active:     { bg: 'rgba(249,115,22,0.12)', border: 'rgba(249,115,22,0.4)', text: '#f97316' },
@@ -37,6 +38,7 @@ export default function Loops() {
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [applying, setApplying] = useState({})
+  const toast = useToast()
 
   const load = async () => {
     setLoading(true)
@@ -44,16 +46,23 @@ export default function Loops() {
       const res = await loopsApi.list()
       setLoops(res.data)
       if (res.data.length) setSelected(s => s ?? res.data[0])
-    } catch {}
+    } catch {
+      toast.error('Could not load loops. Please try again.')
+    }
     setLoading(false)
   }
 
   useEffect(() => { load() }, [])
 
   const changeStatus = async (id, status) => {
-    await loopsApi.updateStatus(id, status).catch(() => {})
-    setLoops(prev => prev.map(l => l.id === id ? { ...l, status } : l))
-    if (selected?.id === id) setSelected(s => ({ ...s, status }))
+    try {
+      await loopsApi.updateStatus(id, status)
+      setLoops(prev => prev.map(l => l.id === id ? { ...l, status } : l))
+      if (selected?.id === id) setSelected(s => ({ ...s, status }))
+      toast.success(`Loop marked as ${status}.`)
+    } catch {
+      toast.error('Could not update status. Please try again.')
+    }
   }
 
   const toggleFix = async (fixId, current) => {
@@ -63,7 +72,9 @@ export default function Loops() {
       const patch = (list) => list.map(f => f.id === fixId ? { ...f, applied: !current } : f)
       setLoops(prev => prev.map(l => ({ ...l, fixes: patch(l.fixes || []) })))
       setSelected(s => s ? ({ ...s, fixes: patch(s.fixes || []) }) : s)
-    } catch {}
+    } catch {
+      toast.error('Could not update fix. Please try again.')
+    }
     setApplying(a => ({ ...a, [fixId]: false }))
   }
 
@@ -83,7 +94,7 @@ export default function Loops() {
               Behavior Loops
             </h1>
             <p className="text-sm" style={{ color: 'var(--muted)' }}>
-              {activeCount} active · {resolvedCount} resolved · IsolationForest + DoWhy
+              {activeCount} active · {resolvedCount} resolved · IsolationForest anomaly detection
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -189,7 +200,7 @@ export default function Loops() {
                       <h3 className="font-medium text-sm">Causal Analysis</h3>
                       <span className="font-mono text-xs px-2 py-0.5 rounded"
                         style={{ background: 'rgba(249,115,22,0.1)', color: 'var(--accent)' }}>
-                        DoWhy + EconML
+                        Causal Heuristic
                       </span>
                     </div>
                     <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--muted)' }}>
